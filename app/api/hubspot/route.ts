@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+// Marcar esta ruta como dinámica
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const nid = searchParams.get('nid')
     
     if (!nid) {
@@ -17,9 +20,6 @@ export async function GET(request: NextRequest) {
     if (!apiKey) {
       // En lugar de devolver error, devolver valores por defecto
       const fallbackValues = {
-        bnpl3: "115000000",
-        bnpl6: "117000000", 
-        bnpl9: "120000000",
         precio_comite_final_final_final__el_unico__: "110000000",
         whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
       }
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
     
     // URL de la API de HubSpot para obtener un deal por ID
-    const url = `https://api.hubapi.com/crm/v3/objects/deals/${nid}?properties=bnpl3,bnpl6,bnpl9,precio_comite_final_final_final__el_unico__,whatsapp_asesor`
+    const url = `https://api.hubapi.com/crm/v3/objects/deals/${nid}?properties=precio_comite_final_final_final__el_unico__,whatsapp_asesor`
     
     const response = await fetch(url, {
       method: 'GET',
@@ -41,9 +41,6 @@ export async function GET(request: NextRequest) {
     if (!response.ok) {
       // En caso de error, devolver valores por defecto
       const fallbackValues = {
-        bnpl3: "115000000",
-        bnpl6: "117000000", 
-        bnpl9: "120000000",
         precio_comite_final_final_final__el_unico__: "110000000",
         whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
       }
@@ -57,9 +54,6 @@ export async function GET(request: NextRequest) {
     const properties = data.properties || {}
     
     const result = {
-      bnpl3: properties.bnpl3 || "110000000",
-      bnpl6: properties.bnpl6 || "112000000", 
-      bnpl9: properties.bnpl9 || "123000000",
       precio_comite_final_final_final__el_unico__: properties.precio_comite_final_final_final__el_unico__ || "100000000",
       whatsapp_asesor: properties.whatsapp_asesor || ""
     }
@@ -71,9 +65,6 @@ export async function GET(request: NextRequest) {
     
     // En caso de error, devolver valores por defecto
     const fallbackValues = {
-      bnpl3: "115000000",
-      bnpl6: "117000000", 
-      bnpl9: "120000000",
       precio_comite_final_final_final__el_unico__: "110000000",
       whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
     }

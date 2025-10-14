@@ -1,8 +1,5 @@
 // Tipos para las propiedades de HubSpot
 export interface HubSpotProperties {
-  bnpl3: string
-  bnpl6: string
-  bnpl9: string
   precio_comite_final_final_final__el_unico__: string
   whatsapp_asesor: string
 }
@@ -56,7 +53,7 @@ export function formatPrice(price: string | number): string {
 }
 
 // Función para manejar la redirección a WhatsApp
-export function handleWhatsAppRedirect(whatsappUrl: string, action: 'oferta' | 'visita') {
+export function handleWhatsAppRedirect(whatsappUrl: string, action: 'oferta' | 'visita' | 'habi-paga-todo' | 'cliente-paga-tramites') {
   if (!whatsappUrl) {
     console.warn('URL de WhatsApp no disponible')
     return
@@ -75,7 +72,9 @@ export function handleWhatsAppRedirect(whatsappUrl: string, action: 'oferta' | '
   // Agregar mensaje predefinido según la acción
   const messages = {
     oferta: '¡Hola! Me interesa solicitar una oferta para mi propiedad.',
-    visita: '¡Hola! Me gustaría agendar una visita a sus oficinas.'
+    visita: '¡Hola! Me gustaría agendar una visita a sus oficinas.',
+    'habi-paga-todo': 'Hola deseo solicitar mi oferta y que habi se encargue de los costos de tramites y notarias',
+    'cliente-paga-tramites': 'Hola deseo solicitar mi oferta pero me hare cargo de los costos de tramites y notarias'
   }
   
   const message = encodeURIComponent(messages[action])

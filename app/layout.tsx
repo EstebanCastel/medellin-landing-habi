@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Montserrat } from "next/font/google"
+import GoogleAnalytics from "@/components/google-analytics"
 import "./globals.css"
 
 const montserrat = Montserrat({
@@ -10,7 +11,7 @@ const montserrat = Montserrat({
 })
 
 export const metadata: Metadata = {
-  title: "Real Estate Website",
+  title: "Medellin-exp-sellers",
   description: "Compramos tu vivienda a tu medida",
     generator: 'v0.app'
 }
@@ -22,7 +23,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className={`${montserrat.variable} antialiased`}>
-      <body className="font-montserrat">{children}</body>
+      <body className="font-montserrat">
+        <GoogleAnalytics />
+        {children}
+      </body>
     </html>
   )
 }

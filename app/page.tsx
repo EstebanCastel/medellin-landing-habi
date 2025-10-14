@@ -5,6 +5,17 @@ import Image from "next/image"
 import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { getHubSpotProperties, formatPrice, handleWhatsAppRedirect, HubSpotProperties } from "@/lib/hubspot"
+import { analytics, usePageTracking, initScrollTracking } from "@/lib/analytics"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const montserrat = Montserrat({ subsets: ["latin"] })
 
@@ -17,6 +28,7 @@ function HomePageContent() {
   const [properties, setProperties] = useState<HubSpotProperties | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [forceUpdate, setForceUpdate] = useState(0)
+  const [showClientPaysModal, setShowClientPaysModal] = useState(false)
 
   const loadProperties = useCallback(async (targetNid: string, shouldUpdateUrl = false) => {
     const sanitizedNid = targetNid.trim()
@@ -44,9 +56,6 @@ function HomePageContent() {
       console.error('Error al cargar propiedades:', error)
       // En caso de error, aún así mostrar la página con valores por defecto
       setProperties({
-        bnpl3: "110000000",
-        bnpl6: "112000000", 
-        bnpl9: "123000000",
         precio_comite_final_final_final__el_unico__: "100000000",
         whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
       })
@@ -65,6 +74,23 @@ function HomePageContent() {
       void loadProperties(initialNid)
     }
   }, []) // Solo ejecutar una vez al montar el componente
+
+  // Tracking de página y scroll
+  useEffect(() => {
+    // Trackear vista de página
+    analytics.pageView('home')
+    
+    // Inicializar tracking de scroll
+    const cleanupScroll = initScrollTracking()
+    
+    // Inicializar tracking de tiempo en página
+    const cleanupPageTime = usePageTracking()
+    
+    return () => {
+      if (cleanupScroll) cleanupScroll()
+      if (cleanupPageTime) cleanupPageTime()
+    }
+  }, [])
 
   useEffect(() => {
     const urlNid = searchParams.get('nid')?.trim()
@@ -89,9 +115,6 @@ function HomePageContent() {
         setIsLoading(false)
         if (nid && !properties) {
           setProperties({
-            bnpl3: "115000000",
-            bnpl6: "117000000", 
-            bnpl9: "120000000",
             precio_comite_final_final_final__el_unico__: "110000000",
             whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
           })
@@ -103,6 +126,8 @@ function HomePageContent() {
   }, [isLoading, nid, properties])
 
   const handleSolicitarOferta = () => {
+    analytics.ctaClick('solicitar_oferta', 'hero_section')
+    analytics.contactClick('whatsapp')
     if (properties?.whatsapp_asesor) {
       handleWhatsAppRedirect(properties.whatsapp_asesor, 'oferta')
     } else {
@@ -111,11 +136,28 @@ function HomePageContent() {
   }
 
   const handleAgendarVisita = () => {
+    analytics.ctaClick('agendar_visita', 'visit_section')
+    analytics.contactClick('whatsapp')
     if (properties?.whatsapp_asesor) {
       handleWhatsAppRedirect(properties.whatsapp_asesor, 'visita')
     } else {
       console.warn('URL de WhatsApp del asesor no disponible')
     }
+  }
+
+  const handleHabiPaysAll = () => {
+    analytics.ctaClick('habi_paga_todo', 'service_cards')
+    analytics.contactClick('whatsapp')
+    const whatsappUrl = properties?.whatsapp_asesor || "https://api.whatsapp.com/send?phone=3009128399"
+    handleWhatsAppRedirect(whatsappUrl, 'habi-paga-todo')
+  }
+
+  const handleClientPaysConfirm = () => {
+    analytics.ctaClick('cliente_paga_tramites', 'service_cards')
+    analytics.contactClick('whatsapp')
+    setShowClientPaysModal(false)
+    const whatsappUrl = properties?.whatsapp_asesor || "https://api.whatsapp.com/send?phone=3009128399"
+    handleWhatsAppRedirect(whatsappUrl, 'cliente-paga-tramites')
   }
 
   const renderLandingContent = (displayProperties: HubSpotProperties) => (
@@ -130,14 +172,13 @@ function HomePageContent() {
             {/* Left Content */}
             <div className="flex-1 max-w-2xl z-10 text-center xl:text-left mb-6 xl:mb-0">
               <h1 className={`${montserrat.className} text-3xl sm:text-4xl lg:text-5xl xl:text-5xl mb-4 sm:mb-6 leading-tight`}>
-                <span className="text-white font-bold block">Compramos tu vivienda</span>
+                <span className="text-white font-bold block">Vende tu vivienda</span>
                 <span className="block font-black text-4xl sm:text-5xl lg:text-6xl xl:text-6xl mt-2" style={{ color: "#EACDFE" }}>
-                  a tu medida
+                  sin complicaciones
                 </span>
               </h1>
               <div className="text-white text-sm sm:text-base space-y-2 max-w-lg mx-auto xl:mx-0">
-                <p>Elige entre liquidez inmediata o el mejor precio en cuotas.</p>
-                <p>Tú decides qué producto se adapta mejor a tus necesidades.</p>
+                <p>Tú eliges: puedes hacerte cargo de los trámites o dejar que Habi los asuma por completo. En ambos casos, recibes un precio justo por tu vivienda.</p>
               </div>
             </div>
 
@@ -148,6 +189,7 @@ function HomePageContent() {
                 alt="Habi - Compramos tu vivienda a tu medida" 
                 width={400} 
                 height={300} 
+                priority
                 className="object-contain object-bottom w-64 h-48 sm:w-80 sm:h-60 md:w-96 md:h-72 xl:w-[570px] xl:h-[400px]"
               />
             </div>
@@ -161,7 +203,7 @@ function HomePageContent() {
           {/* Top section with purple background */}
           <div className="text-center p-4 sm:p-6 lg:p-8" style={{ backgroundColor: "#F9F0FF" }}>
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6" style={{ color: "#8A00E6" }}>
-              Elige tu producto financiero
+              Elige cómo prefieres vender
             </h2>
 
             <div className="mb-4">
@@ -169,7 +211,7 @@ function HomePageContent() {
                 Precio de compra
               </p>
               <div className="text-3xl sm:text-4xl lg:text-5xl font-bold" style={{ color: "#8A00E6" }}>
-                {formatPrice(displayProperties.bnpl9)}
+                $ 450.000.000
               </div>
             </div>
           </div>
@@ -180,125 +222,185 @@ function HomePageContent() {
       {/* Gap space after hero section */}
       <div className="py-6 sm:py-8 lg:py-12"></div>
 
-      {/* Product Details Section - Always Visible */}
+        {/* Services Section */}
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 lg:py-12">
-          <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-center lg:items-start">
-            {/* Left Card - Vertical */}
-            <div 
-              className="w-full max-w-sm lg:max-w-none lg:w-96 mx-auto lg:mx-0 rounded-[1.5rem] sm:rounded-[2rem] lg:rounded-[2.5rem] text-white flex flex-col relative overflow-hidden h-auto sm:h-[400px] lg:h-[617px]"
-              style={{ backgroundColor: "#7400C2" }}
-            >
-              {/* Text Content */}
-              <div className="flex justify-center">
-                <div className="w-full sm:w-80 p-4 sm:p-6 pb-4 sm:pb-0 text-center lg:text-left">
-                <h2 className={`${montserrat.className} text-2xl sm:text-3xl lg:text-4xl mb-4 sm:mb-6 leading-tight`}>
-                  <span className="block font-bold">Elige un</span>
-                  <span className="block font-bold">producto</span>
-                  <span className="block font-black text-3xl sm:text-4xl lg:text-5xl mt-2" style={{ color: "#EACDFE" }}>
-                    a tu medida
-                  </span>
-                </h2>
-                <p className="text-white text-sm sm:text-base mb-4 sm:mb-6">
-                  La flexibilidad de nuestros productos te permite tomar la decisión ideal para ti.
+          {/* Title Section */}
+          <div className="text-center mb-8 sm:mb-12 lg:mb-16">
+            <h2 className={`${montserrat.className} text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black mb-4 sm:mb-6`}
+                style={{ color: "#7400C2" }}>
+              Elige cómo prefieres vender
+            </h2>
+            <p className="text-gray-600 text-base sm:text-lg lg:text-xl max-w-4xl mx-auto px-4">
+              En Medellín, los costos de trámites, notarías y registros son muy altos. Te ofrecemos dos opciones: 
+              puedes asumir estos costos tú mismo o nosotros nos encargamos de todo. La flexibilidad de nuestras 
+              opciones te permite tomar la decisión ideal para ti.
+            </p>
+            <p className="text-purple-600 font-semibold text-base sm:text-lg mt-4">
+              El cambio en precio se debe únicamente a lo que cuesta pagar estos gastos en la notaría, Habi no se lleva ni un centavo más por hacer los trámites
+            </p>
+          </div>
+
+          {/* Two Service Cards */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+            {/* Card 1 - Tú pagas trámites */}
+            <div className="group bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-lg border border-gray-200 relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:border-purple-300 hover:-translate-y-2 hover:scale-[1.02]">
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-50/50 to-blue-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Price Section */}
+              <div className="relative z-10 text-center mb-4 sm:mb-6 p-4 sm:p-6 rounded-xl shadow-md transition-all duration-300 group-hover:shadow-lg group-hover:scale-105" style={{ backgroundColor: "#8A00E6" }}>
+                <p className="text-white text-sm sm:text-base mb-2 font-medium">
+                  Precio de venta
                 </p>
-                </div>
+                <p className="text-white text-2xl sm:text-3xl lg:text-4xl font-bold">
+                  $ 450.000.000
+                </p>
+                {/* Decorative elements */}
+                <div className="absolute top-2 right-2 w-8 h-8 bg-white/20 rounded-full opacity-70"></div>
+                <div className="absolute bottom-2 left-2 w-6 h-6 bg-white/10 rounded-full opacity-50"></div>
               </div>
               
-              {/* Bottom Image */}
-              <div className="mt-auto hidden sm:block">
-                <Image 
-                  src="/logo/imagen2.svg" 
-                  alt="Productos financieros" 
-                  width={320} 
-                  height={180} 
-                  className="w-full h-auto object-contain"
-                />
+              {/* Title */}
+              <h3 className={`${montserrat.className} relative z-10 text-xl sm:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-purple-700`}
+                  style={{ color: "#7400C2" }}>
+                Tú pagas los trámites
+              </h3>
+              <div className="relative z-10 text-center mb-4 sm:mb-6">
+                <span className="inline-block bg-purple-100 text-purple-600 px-4 py-1 rounded-full text-sm font-semibold transition-colors duration-300 group-hover:bg-purple-200">
+                  MAYOR PRECIO DE VENTA
+                </span>
               </div>
+              
+              {/* Description */}
+              <p className="relative z-10 text-gray-700 text-sm sm:text-base mb-4 sm:mb-6 text-center leading-relaxed transition-colors duration-300 group-hover:text-gray-800">
+                Obtienes el precio máximo por tu propiedad, pero debes asumir los costos de 
+                trámites notariales y registros.
+              </p>
+              
+              {/* Features */}
+              <ul className="relative z-10 space-y-3 mb-6 sm:mb-8 text-sm sm:text-base text-gray-600">
+                <li className="flex items-start group/item">
+                  <div className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 flex items-center justify-center bg-purple-100 rounded-full transition-colors duration-300 group-hover:bg-purple-200">
+                    <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="transition-colors duration-300 group-hover:text-gray-800">
+                    Gastos notariales por tu cuenta (aproximadamente $8M - $15M)
+                  </span>
+                </li>
+                <li className="flex items-start group/item">
+                  <div className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 flex items-center justify-center bg-purple-100 rounded-full transition-colors duration-300 group-hover:bg-purple-200">
+                    <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="transition-colors duration-300 group-hover:text-gray-800">
+                    Debes acercarte a pagar en la notaría el mismo día de la escritura
+                  </span>
+                </li>
+                <li className="flex items-start group/item">
+                  <div className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 flex items-center justify-center bg-purple-100 rounded-full transition-colors duration-300 group-hover:bg-purple-200">
+                    <svg className="w-3 h-3 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="transition-colors duration-300 group-hover:text-gray-800">
+                    Recibes el precio completo de la venta sin descuentos
+                  </span>
+                </li>
+              </ul>
+              
+              {/* Button */}
+              <button 
+                onClick={() => setShowClientPaysModal(true)}
+                className="relative z-10 w-full border-2 border-purple-600 text-purple-600 hover:bg-purple-600 hover:text-white font-semibold px-6 py-3 rounded-full text-sm sm:text-base transition-all duration-300 transform hover:scale-105 hover:shadow-lg"
+              >
+                Elegir esta opción
+              </button>
             </div>
 
-            {/* Right Cards - 4 Horizontal Cards */}
-            <div className="flex-1 flex flex-col gap-4 sm:gap-6 w-full max-w-2xl mx-auto lg:mx-0">
-              {/* Card 1 - BNPL9 */}
-              <div className="rounded-xl sm:rounded-2xl shadow-md border border-purple-100 flex flex-col sm:flex-row items-stretch overflow-hidden hover:border-2 transition-all duration-200 hover:border-[#8A00E6]">
-                <div className="flex-1 p-4 sm:p-6 text-center text-white" style={{ backgroundColor: "#8A00E6" }}>
-                  <p className="text-sm sm:text-base mb-2 sm:mb-3">
-                    Precio de compra
-                  </p>
-                  <p className="text-2xl sm:text-3xl lg:text-4xl font-bold">
-                    {formatPrice(displayProperties.bnpl9)}
-                  </p>
-                </div>
-                <div className="flex-1 bg-white p-4 sm:p-6 flex flex-col justify-center">
-                  <p className="text-gray-600 text-sm sm:text-base text-center sm:text-left">
-                    Te pagamos en <strong className="text-gray-800">9 cuotas</strong>
-                  </p>
-                  <p className="text-gray-600 text-sm sm:text-base text-center sm:text-left">
-                    de <strong className="text-gray-800">{formatPrice(Number(displayProperties.bnpl9.replace(/[^\d]/g, '')) / 9)}</strong>
-                  </p>
-                </div>
+            {/* Card 2 - Habi paga todo */}
+            <div className="group bg-gradient-to-br from-white to-purple-50 rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xl border-2 border-purple-300 relative overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-2xl hover:border-purple-400 hover:-translate-y-2 hover:scale-[1.02]">
+              {/* Animated background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-100/50 to-pink-50/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              {/* Floating decorative elements */}
+              <div className="absolute top-4 right-4 w-16 h-16 bg-purple-200/20 rounded-full blur-xl transition-all duration-300 group-hover:bg-purple-300/30 group-hover:scale-125"></div>
+              <div className="absolute bottom-4 left-4 w-12 h-12 bg-pink-200/20 rounded-full blur-lg transition-all duration-300 group-hover:bg-pink-300/30 group-hover:scale-110"></div>
+              
+              
+              {/* Price Section */}
+              <div className="relative z-10 text-center mb-4 sm:mb-6 p-4 sm:p-6 rounded-xl shadow-md transition-all duration-300 group-hover:shadow-lg group-hover:scale-105" style={{ backgroundColor: "#F9F0FF" }}>
+                <p className="text-purple-600 text-sm sm:text-base mb-2 font-medium">
+                  Precio de venta
+                </p>
+                <p className="text-purple-600 text-2xl sm:text-3xl lg:text-4xl font-bold">
+                  $ 438.000.000
+                </p>
+                {/* Decorative elements */}
+                <div className="absolute top-2 right-2 w-8 h-8 bg-purple-200/30 rounded-full opacity-70"></div>
+                <div className="absolute bottom-2 left-2 w-6 h-6 bg-purple-100/50 rounded-full opacity-50"></div>
               </div>
-
-              {/* Separator Line */}
-              <div className="my-2 sm:my-3">
-                <div className="w-full h-px bg-gray-200"></div>
+              
+              {/* Title */}
+              <h3 className={`${montserrat.className} relative z-10 text-xl sm:text-2xl font-bold mb-2 text-center transition-colors duration-300 group-hover:text-purple-800`}
+                  style={{ color: "#7400C2" }}>
+                Habi paga todo
+              </h3>
+              <div className="relative z-10 text-center mb-4 sm:mb-6">
+                <span className="inline-block bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-md transition-all duration-300 group-hover:shadow-lg group-hover:from-purple-600 group-hover:to-purple-700">
+                  SIN COMPLICACIONES PARA TI
+                </span>
               </div>
-
-              {/* Card 2 - BNPL6 */}
-              <div className="rounded-xl sm:rounded-2xl shadow-md border border-purple-100 flex flex-col sm:flex-row items-stretch overflow-hidden hover:border-2 transition-all duration-200 hover:border-[#8A00E6]">
-                <div className="flex-1 p-4 sm:p-6 text-center" style={{ backgroundColor: "#F9F0FF", color: "#8A00E6" }}>
-                  <p className="text-sm sm:text-base mb-2 sm:mb-3">
-                    Precio de compra
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold">
-                    {formatPrice(displayProperties.bnpl6)}
-                  </p>
-                </div>
-                <div className="flex-1 bg-white p-4 sm:p-6 flex flex-col justify-center">
-                  <p className="text-gray-600 text-sm sm:text-base text-center sm:text-left">
-                    Te pagamos en <strong className="text-gray-800">6 cuotas</strong>
-                  </p>
-                  <p className="text-gray-600 text-sm sm:text-base text-center sm:text-left">
-                    de <strong className="text-gray-800">{formatPrice(Number(displayProperties.bnpl6.replace(/[^\d]/g, '')) / 6)}</strong>
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 3 - BNPL3 */}
-              <div className="rounded-xl sm:rounded-2xl shadow-md border border-purple-100 flex flex-col sm:flex-row items-stretch overflow-hidden hover:border-2 transition-all duration-200 hover:border-[#8A00E6]">
-                <div className="flex-1 p-4 sm:p-6 text-center" style={{ backgroundColor: "#F9F0FF", color: "#8A00E6" }}>
-                  <p className="text-sm sm:text-base mb-2 sm:mb-3">
-                    Precio de compra
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold">
-                    {formatPrice(displayProperties.bnpl3)}
-                  </p>
-                </div>
-                <div className="flex-1 bg-white p-4 sm:p-6 flex flex-col justify-center">
-                  <p className="text-gray-600 text-sm sm:text-base text-center sm:text-left">
-                    Te pagamos en <strong className="text-gray-800">3 cuotas</strong>
-                  </p>
-                  <p className="text-gray-600 text-sm sm:text-base text-center sm:text-left">
-                    de <strong className="text-gray-800">{formatPrice(Number(displayProperties.bnpl3.replace(/[^\d]/g, '')) / 3)}</strong>
-                  </p>
-                </div>
-              </div>
-
-              {/* Card 4 - Precio Comité Final */}
-              <div className="rounded-xl sm:rounded-2xl shadow-md border border-purple-100 flex flex-col sm:flex-row items-stretch overflow-hidden hover:border-2 transition-all duration-200 hover:border-[#8A00E6]">
-                <div className="flex-1 p-4 sm:p-6 text-center" style={{ backgroundColor: "#F9F0FF", color: "#8A00E6" }}>
-                  <p className="text-sm sm:text-base mb-2 sm:mb-3">
-                    Precio de compra
-                  </p>
-                  <p className="text-2xl sm:text-3xl font-bold">
-                    {formatPrice(displayProperties.precio_comite_final_final_final__el_unico__)}
-                  </p>
-                </div>
-                <div className="flex-1 bg-white p-4 sm:p-6 flex flex-col justify-center">
-                  <p className="text-gray-600 text-sm sm:text-base text-center sm:text-left">
-                    <strong className="text-gray-800">Te pagamos de inmediato</strong>
-                  </p>
-                </div>
-              </div>
+              
+              {/* Description */}
+              <p className="relative z-10 text-gray-700 text-sm sm:text-base mb-4 sm:mb-6 text-center leading-relaxed transition-colors duration-300 group-hover:text-gray-800">
+                Nosotros nos encargamos de todos los gastos notariales y registros. 
+                Tú solo recibes el dinero sin preocuparte por trámites.
+              </p>
+              
+              {/* Features */}
+              <ul className="relative z-10 space-y-3 mb-6 sm:mb-8 text-sm sm:text-base text-gray-600">
+                <li className="flex items-start group/item">
+                  <div className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-300 group-hover:from-purple-600 group-hover:to-purple-700 group-hover:scale-110">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="transition-colors duration-300 group-hover:text-gray-800">
+                    Habi asume todos los costos de trámites y notarías ($8M - $15M)
+                  </span>
+                </li>
+                <li className="flex items-start group/item">
+                  <div className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-300 group-hover:from-purple-600 group-hover:to-purple-700 group-hover:scale-110">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="transition-colors duration-300 group-hover:text-gray-800">
+                    No necesitas acercarte a ninguna notaría ni hacer pagos adicionales
+                  </span>
+                </li>
+                <li className="flex items-start group/item">
+                  <div className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0 flex items-center justify-center bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-300 group-hover:from-purple-600 group-hover:to-purple-700 group-hover:scale-110">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <span className="transition-colors duration-300 group-hover:text-gray-800">
+                    Proceso 100% sin complicaciones para ti
+                  </span>
+                </li>
+              </ul>
+              
+              {/* Button */}
+              <button 
+                onClick={handleHabiPaysAll}
+                className="relative z-10 w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold px-6 py-3 rounded-full text-sm sm:text-base transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                Elegir esta opción
+              </button>
             </div>
           </div>
         </div>
@@ -658,6 +760,42 @@ function HomePageContent() {
           </div>
         </div>
       </div>
+
+      {/* Modal de confirmación para cliente paga trámites */}
+      <AlertDialog open={showClientPaysModal} onOpenChange={setShowClientPaysModal}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-center" style={{ color: "#7400C2" }}>
+              ¿Estás seguro?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-center text-gray-600 space-y-3">
+              <p>
+                Al elegir esta opción, <strong>tú deberás pagar</strong> todos los costos de trámites, notarías y registros.
+              </p>
+              <p className="flex items-start gap-2">
+                <svg className="w-5 h-5 text-amber-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span><strong>Importante:</strong> Deberás acercarte a pagarlos en la notaría el mismo día que Habi realice la escritura.</span>
+              </p>
+              <p className="text-sm text-purple-600">
+                Costo estimado: $8.000.000 - $15.000.000
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+            <AlertDialogCancel className="w-full sm:w-auto">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleClientPaysConfirm}
+              className="w-full sm:w-auto bg-purple-600 hover:bg-purple-700"
+            >
+              Sí, acepto pagar los trámites
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 
@@ -678,9 +816,6 @@ function HomePageContent() {
   if (!nid && !isLoading) {
     // Mostrar la landing con valores por defecto cuando no hay NID
     const defaultProperties: HubSpotProperties = {
-      bnpl3: "149572520",
-      bnpl6: "151464588", 
-      bnpl9: "153226755",
       precio_comite_final_final_final__el_unico__: "148566058",
       whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
     }
@@ -695,9 +830,6 @@ function HomePageContent() {
   return (
     <div key={`${nid}-${forceUpdate}`} className="min-h-screen bg-gray-50">
       {renderLandingContent(properties || {
-        bnpl3: "149572520",
-        bnpl6: "151464588", 
-        bnpl9: "153226755",
         precio_comite_final_final_final__el_unico__: "148566058",
         whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
       })}
