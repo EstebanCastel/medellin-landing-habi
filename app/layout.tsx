@@ -13,7 +13,10 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: "Medellin-exp-sellers",
   description: "Compramos tu vivienda a tu medida",
-    generator: 'v0.app'
+  generator: 'v0.app',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
