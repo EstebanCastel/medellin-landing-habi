@@ -3,7 +3,7 @@
 import { Montserrat } from "next/font/google"
 import Image from "next/image"
 import { useState, useEffect, useCallback, Suspense } from "react"
-import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { getHubSpotProperties, formatPrice, handleWhatsAppRedirect, HubSpotProperties } from "@/lib/hubspot"
 import { analytics, usePageTracking, initScrollTracking } from "@/lib/analytics"
 import {
@@ -19,39 +19,28 @@ import {
 
 const montserrat = Montserrat({ subsets: ["latin"] })
 
-function HomePageContent() {
+function HomePageContent({ params }: { params: { dealUuid: string } }) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const initialDealUuid = searchParams.get('deal_uuid')?.trim() ?? null
-  const [dealUuid, setDealUuid] = useState<string | null>(initialDealUuid)
+  const dealUuid = params.dealUuid
   const [properties, setProperties] = useState<HubSpotProperties | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true) // Iniciar cargando ya que tenemos dealUuid
   const [forceUpdate, setForceUpdate] = useState(0)
   const [showClientPaysModal, setShowClientPaysModal] = useState(false)
 
-  const loadProperties = useCallback(async (targetDealUuid: string, shouldUpdateUrl = false) => {
-    const sanitizedDealUuid = targetDealUuid.trim()
-    if (!sanitizedDealUuid) {
+  const loadProperties = useCallback(async () => {
+    if (!dealUuid) {
       setIsLoading(false)
       return
     }
 
     setIsLoading(true)
-    setDealUuid(sanitizedDealUuid)
 
     try {
-      const hubspotProperties = await getHubSpotProperties(sanitizedDealUuid)
+      const hubspotProperties = await getHubSpotProperties(dealUuid)
       
       setProperties(hubspotProperties)
       setForceUpdate(prev => prev + 1)
-
-      if (shouldUpdateUrl) {
-        const params = new URLSearchParams(searchParams.toString())
-        params.set('deal_uuid', sanitizedDealUuid)
-        const queryString = params.toString()
-        router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
-      }
     } catch (error) {
       console.error('Error al cargar propiedades:', error)
       // En caso de error, aún así mostrar la página con valores por defecto
@@ -62,18 +51,12 @@ function HomePageContent() {
     } finally {
       setIsLoading(false)
     }
-  }, [pathname, router, searchParams])
+  }, [dealUuid])
 
-  const handleDealUuidSubmit = (submittedDealUuid: string) => {
-    void loadProperties(submittedDealUuid, true)
-  }
-
-  // Efecto para carga inicial cuando hay deal_uuid en URL
+  // Efecto para carga inicial
   useEffect(() => {
-    if (initialDealUuid && !properties) {
-      void loadProperties(initialDealUuid)
-    }
-  }, []) // Solo ejecutar una vez al montar el componente
+    void loadProperties()
+  }, [loadProperties])
 
   // Tracking de página y scroll
   useEffect(() => {
@@ -92,21 +75,6 @@ function HomePageContent() {
     }
   }, [])
 
-  useEffect(() => {
-    const urlDealUuid = searchParams.get('deal_uuid')?.trim()
-
-    if (urlDealUuid) {
-      // Solo cargar si es un deal_uuid diferente al actual
-      if (urlDealUuid !== dealUuid) {
-        void loadProperties(urlDealUuid)
-      }
-    } else if (!urlDealUuid && dealUuid) {
-      // Si no hay deal_uuid en la URL pero tenemos uno en el estado, limpiar
-      setDealUuid(null)
-      setProperties(null)
-      setIsLoading(false)
-    }
-  }, [searchParams, dealUuid, loadProperties])
 
   // Timeout de seguridad para evitar carga infinita
   useEffect(() => {
@@ -812,27 +780,6 @@ function HomePageContent() {
     )
   }
 
-  // Si no hay deal_uuid, mostrar mensaje de error
-  if (!dealUuid && !isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="mb-6">
-            <svg className="w-24 h-24 mx-auto text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-4">Acceso no válido</h1>
-          <p className="text-gray-600 mb-6">
-            Para acceder a tu propuesta personalizada, necesitas un enlace único proporcionado por tu asesor de Habi.
-          </p>
-          <p className="text-sm text-gray-500">
-            Si tienes un enlace, por favor úsalo para acceder a tu oferta.
-          </p>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div key={`${dealUuid}-${forceUpdate}`} className="min-h-screen bg-gray-50">
@@ -855,10 +802,10 @@ function LoadingFallback() {
   )
 }
 
-export default function HomePage() {
+export default function HomePage({ params }: { params: { dealUuid: string } }) {
   return (
     <Suspense fallback={<LoadingFallback />}>
-      <HomePageContent />
+      <HomePageContent params={params} />
     </Suspense>
   )
 }

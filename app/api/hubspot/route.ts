@@ -6,11 +6,11 @@ export const dynamic = 'force-dynamic'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl
-    const nid = searchParams.get('nid')
+    const dealUuid = searchParams.get('deal_uuid')
     
-    if (!nid) {
+    if (!dealUuid) {
       return NextResponse.json(
-        { error: 'NID is required' },
+        { error: 'deal_uuid is required' },
         { status: 400 }
       )
     }
@@ -27,15 +27,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(fallbackValues)
     }
     
-    // URL de la API de HubSpot para obtener un deal por ID
-    const url = `https://api.hubapi.com/crm/v3/objects/deals/${nid}?properties=precio_comite_final_final_final__el_unico__,whatsapp_asesor`
+    // URL de la API de HubSpot para buscar deals por deal_uuid
+    const url = `https://api.hubapi.com/crm/v3/objects/deals/search`
     
+    const searchBody = {
+      filterGroups: [
+        {
+          filters: [
+            {
+              propertyName: 'deal_uuid',
+              operator: 'EQ',
+              value: dealUuid
+            }
+          ]
+        }
+      ],
+      properties: ['precio_comite_final_final_final__el_unico__', 'whatsapp_asesor', 'deal_uuid'],
+      limit: 1
+    }
+
     const response = await fetch(url, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(searchBody)
     })
     
     if (!response.ok) {
@@ -50,8 +67,18 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json()
     
-    // Extraer las propiedades del response
-    const properties = data.properties || {}
+    // La API de búsqueda devuelve un array de resultados
+    if (!data.results || data.results.length === 0) {
+      // Si no se encuentra el deal, devolver valores por defecto
+      const fallbackValues = {
+        precio_comite_final_final_final__el_unico__: "110000000",
+        whatsapp_asesor: "https://api.whatsapp.com/send?phone=3009128399"
+      }
+      return NextResponse.json(fallbackValues)
+    }
+    
+    // Extraer las propiedades del primer resultado
+    const properties = data.results[0].properties || {}
     
     const result = {
       precio_comite_final_final_final__el_unico__: properties.precio_comite_final_final_final__el_unico__ || "100000000",

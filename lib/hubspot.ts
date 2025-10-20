@@ -4,11 +4,11 @@ export interface HubSpotProperties {
   whatsapp_asesor: string
 }
 
-// Función para obtener las propiedades de HubSpot por NID
-export async function getHubSpotProperties(nid: string): Promise<HubSpotProperties> {
+// Función para obtener las propiedades de HubSpot por deal_uuid
+export async function getHubSpotProperties(dealUuid: string): Promise<HubSpotProperties> {
   try {
     // Llamar a nuestro endpoint local que maneja CORS
-    const url = `/api/hubspot?nid=${nid}`
+    const url = `/api/hubspot?deal_uuid=${dealUuid}`
     
     const response = await fetch(url, {
       method: 'GET',
