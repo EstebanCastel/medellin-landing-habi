@@ -203,7 +203,7 @@ function HomePageContent() {
           {/* Top section with purple background */}
           <div className="text-center p-4 sm:p-6 lg:p-8" style={{ backgroundColor: "#F9F0FF" }}>
             <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6" style={{ color: "#8A00E6" }}>
-              Elige cómo prefieres vender
+              ¡Elige entre estas dos opciones que tenemos para ti!
             </h2>
 
             <div className="mb-4">
@@ -228,15 +228,10 @@ function HomePageContent() {
           <div className="text-center mb-8 sm:mb-12 lg:mb-16">
             <h2 className={`${montserrat.className} text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-black mb-4 sm:mb-6`}
                 style={{ color: "#7400C2" }}>
-              Elige cómo prefieres vender
+              ¡Elige entre estas dos opciones que tenemos para ti!
             </h2>
-            <p className="text-gray-600 text-base sm:text-lg lg:text-xl max-w-4xl mx-auto px-4">
-              En Medellín, los costos de trámites, notarías y registros son muy altos. Te ofrecemos dos opciones: 
-              puedes asumir estos costos tú mismo o nosotros nos encargamos de todo. La flexibilidad de nuestras 
-              opciones te permite tomar la decisión ideal para ti.
-            </p>
             <p className="text-purple-600 font-semibold text-base sm:text-lg mt-4">
-              El cambio en precio se debe únicamente a lo que cuesta pagar estos gastos en la notaría, Habi no se lleva ni un centavo más por hacer los trámites
+              Ten en cuenta que Habi no te cobra mas por hacer estos tramites
             </p>
           </div>
 
@@ -286,7 +281,7 @@ function HomePageContent() {
                     </svg>
                   </div>
                   <span className="transition-colors duration-300 group-hover:text-gray-800">
-                    Gastos notariales por tu cuenta (aproximadamente $8M - $15M)
+                    Gastos notariales por tu cuenta ($6.750.000)
                   </span>
                 </li>
                 <li className="flex items-start group/item">
@@ -369,7 +364,7 @@ function HomePageContent() {
                     </svg>
                   </div>
                   <span className="transition-colors duration-300 group-hover:text-gray-800">
-                    Habi asume todos los costos de trámites y notarías ($8M - $15M)
+                    Habi asume todos los costos de trámites y notarías ($6.570.000)
                   </span>
                 </li>
                 <li className="flex items-start group/item">
